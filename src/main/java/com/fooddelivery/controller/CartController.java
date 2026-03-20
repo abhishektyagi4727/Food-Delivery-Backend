@@ -15,24 +15,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/cart")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "*")
 public class CartController {
     
     @Autowired
     private ProductService productService;
     
     private Map<String, List<CartItem>> userCarts = new ConcurrentHashMap<>();
-    
-    private CartItemDto convertToDto(CartItem item) {
-        CartItemDto dto = new CartItemDto();
-        dto.setProductId(item.getProductId());
-        dto.setName(item.getName());
-        dto.setPrice(item.getPrice());
-        dto.setImageUrl(item.getImageUrl());
-        dto.setQuantity(item.getQuantity());
-        dto.setSubtotal(item.getPrice().multiply(new java.math.BigDecimal(item.getQuantity())));
-        return dto;
-    }
     
     @GetMapping("/{email}")
     public ApiResponse<List<CartItemDto>> getCart(@PathVariable String email) {
@@ -46,41 +35,17 @@ public class CartController {
     @PostMapping("/add")
     public ApiResponse<List<CartItemDto>> addToCart(@RequestBody Map<String, Object> request) {
         try {
-            // Validate request contains all required fields
-            if (!request.containsKey("email") || !request.containsKey("productId") || !request.containsKey("quantity")) {
-                return ApiResponse.error("Missing required fields: email, productId, quantity");
-            }
-            
-            String email = request.get("email").toString();
-            
-            // Parse productId safely
-            Long productId;
-            try {
-                productId = Long.parseLong(request.get("productId").toString());
-            } catch (NumberFormatException e) {
-                return ApiResponse.error("Invalid productId format");
-            }
-            
-            // Parse quantity safely
-            int quantity;
-            try {
-                quantity = Integer.parseInt(request.get("quantity").toString());
-            } catch (NumberFormatException e) {
-                return ApiResponse.error("Invalid quantity format");
-            }
-            
-            if (quantity <= 0) {
-                return ApiResponse.error("Quantity must be greater than 0");
-            }
+            String email = (String) request.get("email");
+            Long productId = ((Number) request.get("productId")).longValue();
+            int quantity = ((Number) request.get("quantity")).intValue();
             
             Product product = productService.getProductById(productId);
             if (product == null) {
-                return ApiResponse.error("Product not found with id: " + productId);
+                return ApiResponse.error("Product not found");
             }
             
             List<CartItem> cart = userCarts.getOrDefault(email, new ArrayList<>());
             
-            // Check if product already in cart
             boolean found = false;
             for (CartItem item : cart) {
                 if (item.getProductId().equals(productId)) {
@@ -104,21 +69,17 @@ public class CartController {
             return ApiResponse.success("Item added to cart successfully", cartDtos);
             
         } catch (Exception e) {
-            return ApiResponse.error("Error adding to cart: " + e.getMessage());
+            return ApiResponse.error("Error: " + e.getMessage());
         }
     }
     
+    // ✅ THIS IS THE IMPORTANT PART - Make sure this mapping exists!
     @PutMapping("/update")
     public ApiResponse<List<CartItemDto>> updateCart(@RequestBody Map<String, Object> request) {
         try {
-            // Validate request
-            if (!request.containsKey("email") || !request.containsKey("productId") || !request.containsKey("quantity")) {
-                return ApiResponse.error("Missing required fields");
-            }
-            
-            String email = request.get("email").toString();
-            Long productId = Long.parseLong(request.get("productId").toString());
-            int quantity = Integer.parseInt(request.get("quantity").toString());
+            String email = (String) request.get("email");
+            Long productId = ((Number) request.get("productId")).longValue();
+            int quantity = ((Number) request.get("quantity")).intValue();
             
             List<CartItem> cart = userCarts.getOrDefault(email, new ArrayList<>());
             
@@ -126,7 +87,7 @@ public class CartController {
                 // Remove item if quantity is 0 or negative
                 cart.removeIf(item -> item.getProductId().equals(productId));
             } else {
-                // Update existing item or add new one
+                // Update existing item
                 boolean found = false;
                 for (CartItem item : cart) {
                     if (item.getProductId().equals(productId)) {
@@ -136,6 +97,7 @@ public class CartController {
                     }
                 }
                 
+                // If not found, add new item
                 if (!found) {
                     Product product = productService.getProductById(productId);
                     if (product != null) {
@@ -154,7 +116,7 @@ public class CartController {
             return ApiResponse.success("Cart updated successfully", cartDtos);
             
         } catch (Exception e) {
-            return ApiResponse.error("Error updating cart: " + e.getMessage());
+            return ApiResponse.error("Error: " + e.getMessage());
         }
     }
     
@@ -177,12 +139,6 @@ public class CartController {
         return ApiResponse.success("Cart cleared successfully", null);
     }
     
-    @GetMapping("/count/{email}")
-    public ApiResponse<Integer> getCartCount(@PathVariable String email) {
-        List<CartItem> cart = userCarts.getOrDefault(email, new ArrayList<>());
-        return ApiResponse.success(cart.size());
-    }
-    
     @GetMapping("/total/{email}")
     public ApiResponse<Double> getCartTotal(@PathVariable String email) {
         List<CartItem> cart = userCarts.getOrDefault(email, new ArrayList<>());
@@ -190,5 +146,16 @@ public class CartController {
                 .mapToDouble(item -> item.getPrice().doubleValue() * item.getQuantity())
                 .sum();
         return ApiResponse.success(total);
+    }
+    
+    private CartItemDto convertToDto(CartItem item) {
+        CartItemDto dto = new CartItemDto();
+        dto.setProductId(item.getProductId());
+        dto.setName(item.getName());
+        dto.setPrice(item.getPrice());
+        dto.setImageUrl(item.getImageUrl());
+        dto.setQuantity(item.getQuantity());
+        dto.setSubtotal(item.getPrice().multiply(new java.math.BigDecimal(item.getQuantity())));
+        return dto;
     }
 }

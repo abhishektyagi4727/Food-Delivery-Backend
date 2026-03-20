@@ -11,22 +11,17 @@ public class OrderItem {
     private Long id;
     
     @ManyToOne
+    @JoinColumn(name = "order_id")
     private Order order;
     
     @ManyToOne
+    @JoinColumn(name = "product_id")
     private Product product;
     
     private Integer quantity;
-    private BigDecimal price; // Price at time of order
+    private BigDecimal price;
     
     public OrderItem() {}
-    
-    public OrderItem(Order order, Product product, Integer quantity) {
-        this.order = order;
-        this.product = product;
-        this.quantity = quantity;
-        this.price = product.getPrice();
-    }
     
     // Getters and Setters
     public Long getId() { return id; }
@@ -43,8 +38,4 @@ public class OrderItem {
     
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
-    
-    public BigDecimal getSubtotal() {
-        return price.multiply(new BigDecimal(quantity));
-    }
 }
