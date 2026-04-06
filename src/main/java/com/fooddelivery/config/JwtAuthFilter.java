@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -23,7 +25,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private JwtUtil jwtUtil;
     
     @Autowired
-    private JwtService jwtService;  // This is fine now - no circular dependency
+    private JwtService jwtService;
+    
+    // List of public endpoints that don't need token validation
+    private static final List<String> PUBLIC_ENDPOINTS = Arrays.asList(
+        "/api/auth/login",
+        "/api/auth/register",
+        "/api/products",
+        "/api/categories",
+        "/health"
+    );
     
     @Override
     protected void doFilterInternal(HttpServletRequest request, 
@@ -31,13 +42,31 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                    FilterChain filterChain)
             throws ServletException, IOException {
         
+        String requestURI = request.getRequestURI();
+        System.out.println("🔐 JWT Filter - Request: " + request.getMethod() + " " + requestURI);
+        
+        // Skip token validation for public endpoints
+        if (isPublicEndpoint(requestURI)) {
+            System.out.println("🌐 Public endpoint, skipping token validation: " + requestURI);
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         String authHeader = request.getHeader("Authorization");
         String token = null;
         String username = null;
         
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
-            username = jwtUtil.extractUsername(token);
+            try {
+                username = jwtUtil.extractUsername(token);
+                System.out.println("🔐 Extracted username: " + username);
+            } catch (Exception e) {
+                System.out.println("❌ Token validation error: " + e.getMessage());
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("{\"error\": \"Invalid or expired token\"}");
+                return;
+            }
         }
         
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -48,8 +77,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                System.out.println("✅ Authentication successful for: " + username);
+            } else {
+                System.out.println("❌ Token validation failed for: " + username);
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("{\"error\": \"Invalid token\"}");
+                return;
             }
         }
+        
         filterChain.doFilter(request, response);
+    }
+    
+    private boolean isPublicEndpoint(String requestURI) {
+        for (String endpoint : PUBLIC_ENDPOINTS) {
+            if (requestURI.contains(endpoint)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
