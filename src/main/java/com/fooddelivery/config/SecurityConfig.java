@@ -1,6 +1,5 @@
 package com.fooddelivery.config;
 
-import com.fooddelivery.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -64,7 +63,7 @@ public class SecurityConfig {
             "http://localhost:5173",      // Local Vite
             "http://localhost:5174",      // Local Vite (alternative)
             "http://localhost:3000",       // Local React
-            "https://java-full-stack-project-i4n1.vercel.app"  // ✅ Your production frontend
+            "https://food-delivery-frontend-nu-six.vercel.app/"  // ✅ Your production frontend
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
