@@ -14,7 +14,12 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/categories")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://java-full-stack-project-ivory.vercel.app"
+})
+
 public class CategoryController {
     
     @Autowired
